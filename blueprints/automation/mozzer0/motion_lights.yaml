@@ -1,0 +1,77 @@
+blueprint:
+  name: Motion Lights
+  description: Turn lights on based on detected motion and off after a period of time
+  domain: automation
+  input:
+    motion_sensor:
+      name: Motion Sensor
+      selector:
+        entity:
+          filter:
+            - domain: binary_sensor
+            - device_class: motion
+    target_light:
+      name: Lights
+      selector:
+        entity:
+          filter:
+            - domain: light
+    scene:
+      name: Scene
+      description: When the value of the scene is set to Auto the automation will trigger
+      selector:
+        entity:
+          filter:
+            - domain: input_select
+    delay:
+      name: Delay
+      description: The time to wait before turning off the light when no motion is detected
+      selector:
+        duration:
+
+trigger:
+  - platform: state
+    entity_id:
+      - !input motion_sensor
+    to: "on"
+    from: "off"
+    id: detected
+  - platform: state
+    entity_id:
+      - !input motion_sensor
+    to: "off"
+    from: "on"
+    id: clear
+condition:
+  - condition: state
+    entity_id: !input scene
+    state: Auto
+action:
+  - choose:
+      - conditions:
+          - condition: and
+            conditions:
+              - condition: trigger
+                id:
+                  - detected
+              - condition: state
+                entity_id: !input target_light
+                state: "off"
+        sequence:
+          - service: light.turn_on
+            metadata: {}
+            data: {}
+            target:
+              entity_id: !input target_light
+      - conditions:
+          - condition: trigger
+            id:
+              - clear
+        sequence:
+          - delay: !input delay
+          - service: light.turn_off
+            metadata: {}
+            data: {}
+            target:
+              entity_id: !input target_light
+mode: restart
